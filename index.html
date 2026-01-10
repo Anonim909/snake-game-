@@ -1,54 +1,70 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>3D Snake</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
         #score {
-            position: absolute; top: 20px; left: 20px; color: #fff; font-size: 24px; font-weight: bold; pointer-events: none;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            font-size: 24px;
+            font-weight: bold;
+            pointer-events: none;
         }
+
         #game-over {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: #fff; font-size: 40px; font-weight: bold; display: none; text-align: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            display: none;
+            text-align: center;
         }
+
         #restart-btn {
-            margin-top: 20px; padding: 10px 20px; font-size: 20px; cursor: pointer;
-            background: #00ff88; border: none; border-radius: 5px; color: #000;
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 20px;
+            cursor: pointer;
+            background: #00ff88;
+            border: none;
+            border-radius: 5px;
+            color: #000;
         }
-        /* Mobile Controls */
-        #controls {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 20px; pointer-events: none;
-        }
-        .btn {
-            width: 60px; height: 60px; background: rgba(255, 255, 255, 0.2);
-            border-radius: 50%; pointer-events: auto; display: flex;
-            align-items: center; justify-content: center; color: white; font-size: 24px;
-            user-select: none; -webkit-user-select: none;
-        }
-        .btn:active { background: rgba(255, 255, 255, 0.4); }
-        
-        @media (min-width: 768px) {
-            #controls { display: none; } /* Hide on desktop */
+
+        #tutorial {
+            position: absolute;
+            bottom: 50px;
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 16px;
+            pointer-events: none;
         }
     </style>
 </head>
+
 <body>
     <div id="score">Score: 0</div>
     <div id="game-over">
         GAME OVER<br>
         <button id="restart-btn" onclick="resetGame()">Try Again</button>
     </div>
-    
-    <!-- Mobile Controls -->
-    <div id="controls">
-        <div class="btn" onclick="changeDirection('left')">←</div>
-        <div class="btn" onclick="changeDirection('up')">↑</div>
-        <div class="btn" onclick="changeDirection('down')">↓</div>
-        <div class="btn" onclick="changeDirection('right')">→</div>
-    </div>
+    <div id="tutorial">Swipe to move • Tap 'Try Again' to restart</div>
 
     <!-- Three.js from CDN -->
     <script type="importmap">
@@ -76,9 +92,9 @@
         document.body.appendChild(renderer.domElement);
 
         // --- Lighting ---
-        const ambientLight = new THREE.AmbientLight(0x404040, 2); // Soft white light
+        const ambientLight = new THREE.AmbientLight(0x404040, 2);
         scene.add(ambientLight);
-        
+
         const dirLight = new THREE.DirectionalLight(0xffffff, 2);
         dirLight.position.set(10, 20, 10);
         scene.add(dirLight);
@@ -100,7 +116,7 @@
         let direction = { x: 1, z: 0 };
         let nextDirection = { x: 1, z: 0 };
         let moveTimer = 0;
-        let moveInterval = 0.15; // Speed
+        let moveInterval = 0.15;
         let score = 0;
         let isGameOver = false;
 
@@ -111,16 +127,14 @@
         function createCube(x, z, material) {
             const geometry = new THREE.BoxGeometry(0.9, 0.9, 0.9);
             const cube = new THREE.Mesh(geometry, material);
-            cube.position.set(x - boardSize/2 + 0.5, 0.5, z - boardSize/2 + 0.5);
+            cube.position.set(x - boardSize / 2 + 0.5, 0.5, z - boardSize / 2 + 0.5);
             scene.add(cube);
-            // Store logical grid position
             cube.userData = { gridX: x, gridZ: z };
             return cube;
         }
 
         function spawnFood() {
             if (food) scene.remove(food);
-            
             let x, z;
             let valid = false;
             while (!valid) {
@@ -132,7 +146,6 @@
         }
 
         function initGame() {
-            // Clear old snake
             snake.forEach(s => scene.remove(s));
             snake = [];
             isGameOver = false;
@@ -144,7 +157,6 @@
             direction = { x: 1, z: 0 };
             nextDirection = { x: 1, z: 0 };
 
-            // Start with 3 segments
             snake.push(createCube(5, 10, headMaterial));
             snake.push(createCube(4, 10, snakeMaterial));
             snake.push(createCube(3, 10, snakeMaterial));
@@ -152,7 +164,6 @@
             spawnFood();
         }
 
-        // Expose to window for HTML button
         window.resetGame = initGame;
         window.changeDirection = (dir) => {
             if (isGameOver) return;
@@ -162,17 +173,47 @@
             if (dir === 'right' && direction.x !== -1) nextDirection = { x: 1, z: 0 };
         };
 
-        // --- Input ---
+        // --- Swipe Controls ---
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: false });
+
+        document.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].screenX;
+            const touchEndY = e.changedTouches[0].screenY;
+            handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
+        }, { passive: false });
+
+        function handleSwipe(sx, sy, ex, ey) {
+            const dx = ex - sx;
+            const dy = ey - sy;
+            // Min swipe distance
+            if (Math.abs(dx) < 30 && Math.abs(dy) < 30) return;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (dx > 0) window.changeDirection('right');
+                else window.changeDirection('left');
+            } else {
+                if (dy > 0) window.changeDirection('down');
+                else window.changeDirection('up');
+            }
+        }
+
+        // --- Keyboard Controls ---
         document.addEventListener('keydown', (e) => {
             if (isGameOver) return;
-            switch(e.key) {
-                case 'ArrowUp': 
+            switch (e.key) {
+                case 'ArrowUp':
                 case 'w': window.changeDirection('up'); break;
-                case 'ArrowDown': 
+                case 'ArrowDown':
                 case 's': window.changeDirection('down'); break;
-                case 'ArrowLeft': 
+                case 'ArrowLeft':
                 case 'a': window.changeDirection('left'); break;
-                case 'ArrowRight': 
+                case 'ArrowRight':
                 case 'd': window.changeDirection('right'); break;
             }
         });
@@ -190,33 +231,22 @@
                 const newX = head.userData.gridX + direction.x;
                 const newZ = head.userData.gridZ + direction.z;
 
-                // Collision with Walls
-                if (newX < 0 || newX >= boardSize || newZ < 0 || newZ >= boardSize) {
+                if (newX < 0 || newX >= boardSize || newZ < 0 || newZ >= boardSize ||
+                    snake.some(s => s.userData.gridX === newX && s.userData.gridZ === newZ)) {
                     gameOver();
                     return;
                 }
 
-                // Collision with Self
-                if (snake.some(s => s.userData.gridX === newX && s.userData.gridZ === newZ)) {
-                    gameOver();
-                    return;
-                }
-
-                // Move Snake
-                // Create new head
                 const newHead = createCube(newX, newZ, headMaterial);
-                snake[0].material = snakeMaterial; // Turn old head into body
+                snake[0].material = snakeMaterial;
                 snake.unshift(newHead);
 
-                // Eat Food
                 if (newX === food.userData.gridX && newZ === food.userData.gridZ) {
                     score++;
                     document.getElementById('score').innerText = `Score: ${score}`;
                     spawnFood();
-                    // Speed up slightly
                     moveInterval = Math.max(0.05, 0.15 - score * 0.002);
                 } else {
-                    // Remove tail
                     const tail = snake.pop();
                     scene.remove(tail);
                 }
@@ -236,7 +266,6 @@
             renderer.render(scene, camera);
         }
 
-        // Handle Window Resize
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
@@ -248,4 +277,5 @@
 
     </script>
 </body>
+
 </html>
