@@ -260,6 +260,8 @@
             </div>
             <button class="btn" onclick="goToMenu()">MENU</button>
             <button class="btn btn-secondary" onclick="startGame()">REPLAY</button>
+            <button class="btn" onclick="saveAndQuit()"
+                style="background:#2196f3; box-shadow: 0 6px 0 #0b7dda; margin-top:20px;">SAVE & QUIT</button>
         </div>
     </div>
 
@@ -341,6 +343,22 @@
             els.mainMenu.classList.remove('hidden');
         };
 
+        // SAVE & QUIT (Sends data to Bot)
+        window.saveAndQuit = () => {
+            saveData();
+            if (window.Telegram && window.Telegram.WebApp) {
+                const payload = {
+                    coins: GameData.coins,
+                    highScore: GameData.highScore
+                };
+                window.Telegram.WebApp.sendData(JSON.stringify(payload));
+            } else {
+                // Fallback for browser testing
+                alert("Data Saved! (In production this would close the app)");
+                goToMenu();
+            }
+        };
+
         window.goToMenu = () => {
             initGame(false);
             els.gameOver.classList.add('hidden');
@@ -350,6 +368,7 @@
         };
 
         window.startGame = () => {
+            if (window.Telegram && window.Telegram.WebApp) window.Telegram.WebApp.expand();
             els.mainMenu.classList.add('hidden');
             els.gameOver.classList.add('hidden');
             els.hud.style.display = 'flex';
