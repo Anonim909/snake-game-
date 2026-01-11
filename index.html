@@ -127,35 +127,29 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
 
+            // Adjusted for 12x12 board (zoom in closer)
             if (aspect < 0.8) { // Portrait
-                camera.position.set(0, 32, 18);
+                camera.position.set(0, 24, 12);
             } else { // Landscape
-                camera.position.set(0, 25, 15);
+                camera.position.set(0, 18, 10);
             }
-            camera.lookAt(0, 0, 2);
+            camera.lookAt(0, 0, 1);
         }
         window.addEventListener('resize', updateCamera);
         updateCamera();
 
         // --- Lighting ---
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.7);
         scene.add(hemiLight);
 
         const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-        dirLight.position.set(10, 20, 10);
+        dirLight.position.set(5, 15, 5);
         dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 2048;
-        dirLight.shadow.mapSize.height = 2048;
-        dirLight.shadow.camera.near = 0.1;
-        dirLight.shadow.camera.far = 50;
-        dirLight.shadow.camera.left = -15;
-        dirLight.shadow.camera.right = 15;
-        dirLight.shadow.camera.top = 15;
-        dirLight.shadow.camera.bottom = -15;
         scene.add(dirLight);
 
         // --- Game Board ---
-        const boardSize = 18;
+        const boardSize = 12; // 12x12 Board
+
         // Grass Texture look (Procedural)
         const groundGeometry = new THREE.PlaneGeometry(100, 100);
         const groundMaterial = new THREE.MeshStandardMaterial({
@@ -297,9 +291,13 @@
             direction = { x: 1, z: 0 };
             nextDirection = { x: 1, z: 0 };
 
-            snake.push(createSegment(4, 9, true));
-            snake.push(createSegment(3, 9));
-            snake.push(createSegment(2, 9));
+            // Center start for 12x12
+            const startX = Math.floor(boardSize / 2);
+            const startZ = Math.floor(boardSize / 2);
+
+            snake.push(createSegment(startX, startZ, true));
+            snake.push(createSegment(startX - 1, startZ));
+            snake.push(createSegment(startX - 2, startZ));
 
             // Rotate initial head to face right
             snake[0].lookAt(snake[0].position.x + 1, snake[0].position.y, snake[0].position.z);
@@ -316,15 +314,17 @@
             }
             if (isGameOver) return;
 
-            if (dir === 'up' && direction.x !== 0) nextDirection = { x: 0, z: -1 };
-            if (dir === 'down' && direction.x !== 0) nextDirection = { x: 0, z: 1 };
-            if (dir === 'left' && direction.z !== 0) nextDirection = { x: -1, z: 0 };
-            if (dir === 'right' && direction.z !== 0) nextDirection = { x: 1, z: 0 };
+            if (dir === 'up' && direction.z !== 1) nextDirection = { x: 0, z: -1 };
+            if (dir === 'down' && direction.z !== -1) nextDirection = { x: 0, z: 1 };
+            if (dir === 'left' && direction.x !== 1) nextDirection = { x: -1, z: 0 };
+            if (dir === 'right' && direction.x !== -1) nextDirection = { x: 1, z: 0 };
         }
 
         // --- Controls ---
         let touchStartX = 0;
         let touchStartY = 0;
+
+        document.addEventListener('click', () => { window.focus(); }); // Try to capture focus
 
         document.addEventListener('touchstart', (e) => {
             touchStartX = e.changedTouches[0].screenX;
@@ -342,12 +342,14 @@
         }, { passive: false });
 
         document.addEventListener('keydown', (e) => {
-            switch (e.key) {
-                case 'ArrowUp': case 'w': input('up'); break;
-                case 'ArrowDown': case 's': input('down'); break;
-                case 'ArrowLeft': case 'a': input('left'); break;
-                case 'ArrowRight': case 'd': input('right'); break;
-            }
+            // Support both Key Code (Physical Position) and Key Value
+            const key = e.key.toLowerCase();
+            const code = e.code;
+
+            if (['arrowup', 'w'].includes(key) || code === 'KeyW') input('up');
+            if (['arrowdown', 's'].includes(key) || code === 'KeyS') input('down');
+            if (['arrowleft', 'a'].includes(key) || code === 'KeyA') input('left');
+            if (['arrowright', 'd'].includes(key) || code === 'KeyD') input('right');
         });
 
         // --- Game Logic ---
